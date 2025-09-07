@@ -1,5 +1,8 @@
-use jni_simple::{JNIEnv, JNI_CreateJavaVM_with_string_args, JNI_VERSION_1_8};
-use jprop::{parse_bytes_utf8_to_map, parse_utf8, parse_utf8_to_map, ParsedValue, ParserPosition, PropertyHandler};
+use jni_simple::{JNI_CreateJavaVM_with_string_args, JNI_VERSION_1_8, JNIEnv};
+use jprop::{
+    ParsedValue, ParserPosition, PropertyHandler, parse_bytes_utf8_to_map, parse_utf8,
+    parse_utf8_to_map,
+};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -11,17 +14,23 @@ static MUTEX: Mutex<()> = Mutex::new(());
 fn get_jvm() -> JNIEnv {
     let _guard = MUTEX.lock();
     let jvm = unsafe {
-        _= jni_simple::load_jvm_from_java_home();
+        _ = jni_simple::load_jvm_from_java_home();
         assert!(jni_simple::is_jvm_loaded());
-        jni_simple::JNI_GetCreatedJavaVMs_first().expect("Failed to get jvm").unwrap_or_else(|| {
-            let (jvm, _) = JNI_CreateJavaVM_with_string_args::<&str>(JNI_VERSION_1_8, &[], true).expect("Failed to create java VM");
-            jvm
-        })
+        jni_simple::JNI_GetCreatedJavaVMs_first()
+            .expect("Failed to get jvm")
+            .unwrap_or_else(|| {
+                let (jvm, _) =
+                    JNI_CreateJavaVM_with_string_args::<&str>(JNI_VERSION_1_8, &[], true)
+                        .expect("Failed to create java VM");
+                jvm
+            })
     };
 
     unsafe {
         let Ok(env) = jvm.GetEnv::<JNIEnv>(JNI_VERSION_1_8) else {
-            return jvm.AttachCurrentThread_str(JNI_VERSION_1_8, (), null_mut()).unwrap()
+            return jvm
+                .AttachCurrentThread_str(JNI_VERSION_1_8, (), null_mut())
+                .unwrap();
         };
 
         env
@@ -50,7 +59,11 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
         assert!(!prop_constr.is_null());
         let prop = jvm.NewObject0(prop_class, prop_constr);
         assert!(!prop.is_null());
-        let prop_get = jvm.GetMethodID(prop_class, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+        let prop_get = jvm.GetMethodID(
+            prop_class,
+            "getProperty",
+            "(Ljava/lang/String;)Ljava/lang/String;",
+        );
         assert!(!prop_get.is_null());
         let prop_keys = jvm.GetMethodID(prop_class, "stringPropertyNames", "()Ljava/util/Set;");
         assert!(!prop_keys.is_null());
@@ -59,9 +72,6 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
         assert!(!set_class.is_null());
         let set_to_array = jvm.GetMethodID(set_class, "toArray", "()[Ljava/lang/Object;");
         assert!(!set_to_array.is_null());
-
-
-
 
         let fais_class = jvm.FindClass("java/io/FileInputStream");
         assert!(!fais_class.is_null());
@@ -74,10 +84,13 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
         let fais = jvm.NewObject1(fais_class, fais_constr, path_jstring);
         assert!(!fais.is_null());
 
-
         let isr_class = jvm.FindClass("java/io/InputStreamReader");
         assert!(!isr_class.is_null());
-        let isr_constr = jvm.GetMethodID(isr_class, "<init>", "(Ljava/io/InputStream;Ljava/lang/String;)V");
+        let isr_constr = jvm.GetMethodID(
+            isr_class,
+            "<init>",
+            "(Ljava/io/InputStream;Ljava/lang/String;)V",
+        );
         assert!(!isr_constr.is_null());
 
         let utf8_str = jvm.NewStringUTF("UTF-8");
@@ -103,8 +116,12 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
             let element_value = jvm.CallObjectMethod1(prop, prop_get, element_key);
             assert!(!element_value.is_null());
             //jvm.CallObjectMethod1(out, println, element_value);
-            let key = jvm.GetStringUTFChars_as_string(element_key).expect("Failed to turn jstring into rust String");
-            let value = jvm.GetStringUTFChars_as_string(element_value).expect("Failed to turn jstring into rust String");
+            let key = jvm
+                .GetStringUTFChars_as_string(element_key)
+                .expect("Failed to turn jstring into rust String");
+            let value = jvm
+                .GetStringUTFChars_as_string(element_value)
+                .expect("Failed to turn jstring into rust String");
             result.insert(key, value);
         }
 

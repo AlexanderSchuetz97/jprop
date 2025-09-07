@@ -48,6 +48,7 @@ files I need to parse, so I have come to the conclusion that I sadly have to mak
 Parse key, value as a `HashMap<String, String>`
 ```rust
 use std::collections::HashMap;
+use std::fs::File;
 
 pub fn read_test_properties() {
     let mut file = File::open("test.properties").expect("Failed to parse file");
@@ -59,6 +60,9 @@ pub fn read_test_properties() {
 
 Parse the entire document as a stream.
 ```rust
+use jprop::{ParsedValue, ParserPosition};
+use std::fs::File;
+
 //Your handler would probably have some fields and be more complex.
 struct Handler;
 
@@ -84,9 +88,10 @@ pub fn read_test_properties_as_stream() {
 
 Parse from a &str
 ```rust
+use std::collections::HashMap;
+
 pub fn read_properties_from_string() {
-    //Note that this will only work if the file is in utf-8 as include_str requires that.
-    let test = include_str!("test.properties"); 
+    let test = "abc=abc\nbcd=bcd\n#..."; //or 'include_str!("some_file.properties");' but that only works with utf-8 files.
     let data: HashMap<String, String> = jprop::parse_str_to_map(test).expect("Failed to parse str");
     //use data here
     //profit?

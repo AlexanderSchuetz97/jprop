@@ -7,7 +7,6 @@ use core::fmt::{Display, Formatter};
 use core::marker::PhantomData;
 use core::mem;
 use core::str::Chars;
-use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Hash)]
 pub enum CharacterInputError<E> {
@@ -39,96 +38,51 @@ pub trait PropertyHandler {
 //0 char is used as a substitute for undefined.
 static ISO_8859_1: &[char] = &[
     //0x00-0x0F
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
+    '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
     //0x10-0x1F
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
+    '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
     //0x20-0x2F
-    ' ', '!', '"', '#',
-    '$', '%', '&', '\'',
-    '(', ')', '*', '+',
-    ',','-','.','/',
+    ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
     //0x30-0x3F
-    '0', '1', '2', '3',
-    '4', '5', '6', '7',
-    '8', '9', ':', ';',
-    '<', '=', '>', '?',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
     //0x40-0x4F
-    '@', 'A', 'B', 'C',
-    'D', 'E', 'F', 'G',
-    'H', 'I', 'J', 'K',
-    'L', 'M', 'N', 'O',
+    '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
     //0x50-0x5F
-    'P', 'Q', 'R', 'S',
-    'T', 'U', 'V', 'W',
-    'X', 'Y', 'Z', '[',
-    '\\', ']', '^', '_',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_',
     //0x60-0x6f
-    '`', 'a', 'b', 'c',
-    'd', 'e', 'f', 'g',
-    'h', 'i', 'j', 'k',
-    'l', 'm', 'n', 'o',
+    '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
     //0x70-0x7F
-    'p', 'q', 'r', 's',
-    't', 'u', 'v', 'w',
-    'x', 'y', 'z', '{',
-    '|', '}', '~', '\0',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', '\0',
     //0x80-0x8F
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
+    '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
     //0x90-0x9F
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
-    '\0', '\0', '\0', '\0',
+    '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
     //0xA0-0xAF
-    '\u{00A0}', '¡', '¢', '£',
-    '¤', '¥', '¦', '§',
-    '¨', '©', 'ª', '«',
-    '¬', '\u{00AD}', '®', '¯',
+    '\u{00A0}', '¡', '¢', '£', '¤', '¥', '¦', '§', '¨', '©', 'ª', '«', '¬', '\u{00AD}', '®', '¯',
     //0xB0-0xBF
-    '°', '±', '²', '³',
-    '´', 'µ', '¶', '·',
-    '¸', '¹', 'º', '»',
-    '¼', '½', '¾', '¿',
+    '°', '±', '²', '³', '´', 'µ', '¶', '·', '¸', '¹', 'º', '»', '¼', '½', '¾', '¿',
     //0xC0-0xCF
-    'À', 'Á', 'Â', 'Ã',
-    'Ä', 'Å', 'Æ', 'Ç',
-    'È', 'É', 'Ê', 'Ë',
-    'Ì', 'Í', 'Î', 'Ï',
+    'À', 'Á', 'Â', 'Ã', 'Ä', 'Å', 'Æ', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï',
     //0xD0-0xDF
-    'Ð', 'Ñ', 'Ò', 'Ó',
-    'Ô', 'Õ', 'Ö', '×',
-    'Ø', 'Ù', 'Ú', 'Û',
-    'Ü', 'Ý', 'Þ', 'ß',
+    'Ð', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', '×', 'Ø', 'Ù', 'Ú', 'Û', 'Ü', 'Ý', 'Þ', 'ß',
     //0xE0-0xEF
-    'à', 'á', 'â', 'ã',
-    'ä', 'å', 'æ', 'ç',
-    'è', 'é', 'ê', 'ë',
-    'ì', 'í', 'î', 'ï',
+    'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ç', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï',
     //0xF0-0xFF
-    'ð', 'ñ', 'ò', 'ó',
-    'ô', 'õ', 'ö', '÷',
-    'ø', 'ù', 'ú', 'û',
-    'ü', 'ý', 'þ', 'ÿ',
+    'ð', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', '÷', 'ø', 'ù', 'ú', 'û', 'ü', 'ý', 'þ', 'ÿ',
 ];
-
 
 struct UTF8<'a, T: ByteInput<E>, E>(&'a mut T, bool, bool, PhantomData<E>);
 impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
     fn next_character(&mut self) -> Result<Option<char>, CharacterInputError<E>> {
         let mut buf = [0u8; 5];
 
-        buf[0] = match self.0.next_byte().map_err(CharacterInputError::InputError)? {
+        buf[0] = match self
+            .0
+            .next_byte()
+            .map_err(CharacterInputError::InputError)?
+        {
             None => return Ok(None), //EOF
-            Some(d) => d
+            Some(d) => d,
         };
 
         let first = buf[0];
@@ -141,7 +95,7 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
             return Ok(Some(iso));
         }
 
-        if iso == '\0'{
+        if iso == '\0' {
             self.1 = true;
         }
 
@@ -163,7 +117,6 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
             return Ok(Some(iso));
         }
 
-
         //We can no longer switch to ISO-8859-1
         self.1 = true;
 
@@ -179,13 +132,15 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
             return Err(CharacterInputError::InvalidInput);
         };
 
-        for n in 1..cnt {
-            buf[n] = self.0.next_byte()
+        for n in buf.iter_mut().take(cnt).skip(1) {
+            *n = self
+                .0
+                .next_byte()
                 .map_err(CharacterInputError::InputError)?
                 .ok_or(CharacterInputError::UnexpectedEof)?;
         }
 
-        str::from_utf8(&buf[0..cnt])
+        core::str::from_utf8(&buf[0..cnt])
             .ok()
             .and_then(|e| e.chars().next())
             .map(Some)
@@ -196,9 +151,13 @@ struct ISO88591<'a, T: ByteInput<E>, E>(&'a mut T, PhantomData<E>);
 
 impl<T: ByteInput<E>, E> CharacterInput<E> for ISO88591<'_, T, E> {
     fn next_character(&mut self) -> Result<Option<char>, CharacterInputError<E>> {
-        let byte = match self.0.next_byte().map_err(CharacterInputError::InputError)? {
+        let byte = match self
+            .0
+            .next_byte()
+            .map_err(CharacterInputError::InputError)?
+        {
             None => return Ok(None), //EOF
-            Some(d) => d
+            Some(d) => d,
         };
 
         let iso = ISO_8859_1[byte as usize];
@@ -209,7 +168,6 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for ISO88591<'_, T, E> {
         Ok(Some(iso))
     }
 }
-
 
 #[derive(Debug, Eq, PartialEq)]
 enum State {
@@ -241,8 +199,11 @@ pub struct ParserPosition {
 }
 
 impl Display for ParserPosition {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("line: {} pos: {}", self.line, self.character_in_line))
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_fmt(format_args!(
+            "line: {} pos: {}",
+            self.line, self.character_in_line
+        ))
     }
 }
 
@@ -287,7 +248,7 @@ impl<E: Display> Display for ParserError<E> {
                 f.write_str("InvalidInput(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(")")
-            },
+            }
             ParserError::InputError(pos, e) => {
                 f.write_str("InputError(")?;
                 Display::fmt(pos, f)?;
@@ -334,7 +295,7 @@ impl ByteInput<()> for SliceInput<'_> {
             return Ok(None);
         }
 
-        let r =self.0[self.1];
+        let r = self.0[self.1];
         self.1 += 1;
         Ok(Some(r))
     }
@@ -358,7 +319,7 @@ impl PropertyHandler for DocHandler {
 
 #[cfg(feature = "std")]
 #[derive(Default, Debug)]
-struct MapHandler(HashMap<String, String>);
+struct MapHandler(std::collections::HashMap<String, String>);
 
 #[cfg(feature = "std")]
 impl PropertyHandler for MapHandler {
@@ -397,103 +358,136 @@ impl<T: std::io::Read> ByteInput<std::io::Error> for T {
     }
 }
 
-
-pub fn parse_iso_8859_1_to_doc<E>(source: &mut impl ByteInput<E>) -> Result<Vec<ParsedValue>, ParserError<E>> {
+pub fn parse_iso_8859_1_to_doc<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<Vec<ParsedValue>, ParserError<E>> {
     let mut result = DocHandler::default();
     parse_iso_8859_18(source, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_iso_8859_1_to_vec<E>(source: &mut impl ByteInput<E>) -> Result<Vec<(String, String)>, ParserError<E>> {
+pub fn parse_iso_8859_1_to_vec<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<Vec<(String, String)>, ParserError<E>> {
     let mut result = VecHandler::default();
     parse_iso_8859_18(source, &mut result)?;
     Ok(result.0)
 }
 
-
 #[cfg(feature = "std")]
-pub fn parse_iso_8859_1_to_map<E>(source: &mut impl ByteInput<E>) -> Result<HashMap<String, String>, ParserError<E>> {
+pub fn parse_iso_8859_1_to_map<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<std::collections::HashMap<String, String>, ParserError<E>> {
     let mut result = MapHandler::default();
     parse_iso_8859_18(source, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_iso_8859_18<E>(source: &mut impl ByteInput<E>, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<E>> {
+pub fn parse_iso_8859_18<E>(
+    source: &mut impl ByteInput<E>,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<E>> {
     let mut n = ISO88591(source, Default::default());
     parse(&mut n, handler)
 }
 
-
-pub fn parse_utf8_to_doc<E>(source: &mut impl ByteInput<E>) -> Result<Vec<ParsedValue>, ParserError<E>> {
+pub fn parse_utf8_to_doc<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<Vec<ParsedValue>, ParserError<E>> {
     let mut result = DocHandler::default();
     parse_utf8(source, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_utf8_to_vec<E>(source: &mut impl ByteInput<E>) -> Result<Vec<(String, String)>, ParserError<E>> {
+pub fn parse_utf8_to_vec<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<Vec<(String, String)>, ParserError<E>> {
     let mut result = VecHandler::default();
     parse_utf8(source, &mut result)?;
     Ok(result.0)
 }
 
 #[cfg(feature = "std")]
-pub fn parse_utf8_to_map<E>(source: &mut impl ByteInput<E>) -> Result<HashMap<String, String>, ParserError<E>> {
+pub fn parse_utf8_to_map<E>(
+    source: &mut impl ByteInput<E>,
+) -> Result<std::collections::HashMap<String, String>, ParserError<E>> {
     let mut result = MapHandler::default();
     parse_utf8(source, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_utf8<E>(source: &mut impl ByteInput<E>, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<E>> {
+pub fn parse_utf8<E>(
+    source: &mut impl ByteInput<E>,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<E>> {
     let mut n = UTF8(source, false, false, Default::default());
     parse(&mut n, handler)
 }
 
-pub fn parse_bytes_iso_8859_1_to_doc(bytes: impl AsRef<[u8]>) -> Result<Vec<ParsedValue>, ParserError<()>> {
+pub fn parse_bytes_iso_8859_1_to_doc(
+    bytes: impl AsRef<[u8]>,
+) -> Result<Vec<ParsedValue>, ParserError<()>> {
     let mut result = DocHandler::default();
     parse_bytes_iso_8859_1(bytes, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_bytes_iso_8859_1_to_vec(bytes: impl AsRef<[u8]>) -> Result<Vec<(String, String)>, ParserError<()>> {
+pub fn parse_bytes_iso_8859_1_to_vec(
+    bytes: impl AsRef<[u8]>,
+) -> Result<Vec<(String, String)>, ParserError<()>> {
     let mut result = VecHandler::default();
     parse_bytes_iso_8859_1(bytes, &mut result)?;
     Ok(result.0)
 }
 
 #[cfg(feature = "std")]
-pub fn parse_bytes_iso_8859_1_to_map(bytes: impl AsRef<[u8]>) -> Result<HashMap<String, String>, ParserError<()>> {
+pub fn parse_bytes_iso_8859_1_to_map(
+    bytes: impl AsRef<[u8]>,
+) -> Result<std::collections::HashMap<String, String>, ParserError<()>> {
     let mut result = MapHandler::default();
     parse_bytes_iso_8859_1(bytes, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_bytes_iso_8859_1(bytes: impl AsRef<[u8]>, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<()>> {
+pub fn parse_bytes_iso_8859_1(
+    bytes: impl AsRef<[u8]>,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<()>> {
     let n = bytes.as_ref();
     let mut sl = SliceInput(n, 0);
     let mut iso = ISO88591(&mut sl, Default::default());
     parse(&mut iso, handler)
 }
 
-pub fn parse_bytes_utf8_to_doc(bytes: impl AsRef<[u8]>) -> Result<Vec<ParsedValue>, ParserError<()>> {
+pub fn parse_bytes_utf8_to_doc(
+    bytes: impl AsRef<[u8]>,
+) -> Result<Vec<ParsedValue>, ParserError<()>> {
     let mut result = DocHandler::default();
     parse_bytes_utf8(bytes, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_bytes_utf8_to_vec(bytes: impl AsRef<[u8]>) -> Result<Vec<(String, String)>, ParserError<()>> {
+pub fn parse_bytes_utf8_to_vec(
+    bytes: impl AsRef<[u8]>,
+) -> Result<Vec<(String, String)>, ParserError<()>> {
     let mut result = VecHandler::default();
     parse_bytes_utf8(bytes, &mut result)?;
     Ok(result.0)
 }
 
 #[cfg(feature = "std")]
-pub fn parse_bytes_utf8_to_map(bytes: impl AsRef<[u8]>) -> Result<HashMap<String, String>, ParserError<()>> {
+pub fn parse_bytes_utf8_to_map(
+    bytes: impl AsRef<[u8]>,
+) -> Result<std::collections::HashMap<String, String>, ParserError<()>> {
     let mut result = MapHandler::default();
     parse_bytes_utf8(bytes, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_bytes_utf8(bytes: impl AsRef<[u8]>, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<()>> {
+pub fn parse_bytes_utf8(
+    bytes: impl AsRef<[u8]>,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<()>> {
     let n = bytes.as_ref();
     let mut sli = SliceInput(n, 0);
     let mut utf = UTF8(&mut sli, false, false, Default::default());
@@ -513,13 +507,18 @@ pub fn parse_str_to_vec(str: impl AsRef<str>) -> Result<Vec<(String, String)>, P
 }
 
 #[cfg(feature = "std")]
-pub fn parse_str_to_map(str: impl AsRef<str>) -> Result<HashMap<String, String>, ParserError<()>> {
+pub fn parse_str_to_map(
+    str: impl AsRef<str>,
+) -> Result<std::collections::HashMap<String, String>, ParserError<()>> {
     let mut result = MapHandler::default();
     parse_str(str, &mut result)?;
     Ok(result.0)
 }
 
-pub fn parse_str(str: impl AsRef<str>, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<()>> {
+pub fn parse_str(
+    str: impl AsRef<str>,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<()>> {
     let str = str.as_ref();
     let mut input = str.chars();
     parse(&mut input, handler)
@@ -528,7 +527,10 @@ pub fn parse_str(str: impl AsRef<str>, handler: &mut impl PropertyHandler) -> Re
 /// Low-level parsing function.
 /// There should be no need to use this function directly unless you need to, for example, parse
 /// in a custom encoding that the JVM itself cannot even read.
-pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl PropertyHandler) -> Result<ParserPosition, ParserError<E>> {
+pub fn parse<T: CharacterInput<E>, E>(
+    input: &mut T,
+    handler: &mut impl PropertyHandler,
+) -> Result<ParserPosition, ParserError<E>> {
     let mut pos = ParserPosition::default();
     let mut state = State::LineStart;
     let mut key_buf = String::new();
@@ -538,35 +540,37 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
     'parse_next: loop {
         let next_char = match input.next_character() {
             Ok(Some(c)) => c,
-            Ok(None) => return match state {
-                State::CarriageReturn | State::LineStart => {
-                    handler.handle(&pos, ParsedValue::BlankLine);
-                    Ok(pos)
-                },
-                State::Comment => {
-                    handler.handle(&pos, ParsedValue::Comment(key_buf));
-                    return Ok(pos);
-                }
-                State::Key | State::KeyWhitespace | State::BeginValue => {
-                    handler.handle(&pos, ParsedValue::Value(key_buf, String::new()));
-                    Ok(pos)
-                }
-                State::Value => {
-                    handler.handle(&pos, ParsedValue::Value(key_buf, value_buf));
-                    Ok(pos)
-                }
-                State::MultiLineTrim(is_value) | State::EscapeCarriageReturn(is_value) => {
-                    if is_value {
-                        handler.handle(&pos, ParsedValue::Value(key_buf, value_buf));
-                    } else {
-                        handler.handle(&pos, ParsedValue::Value(key_buf, String::new()));
+            Ok(None) => {
+                return match state {
+                    State::CarriageReturn | State::LineStart => {
+                        handler.handle(&pos, ParsedValue::BlankLine);
+                        Ok(pos)
                     }
+                    State::Comment => {
+                        handler.handle(&pos, ParsedValue::Comment(key_buf));
+                        return Ok(pos);
+                    }
+                    State::Key | State::KeyWhitespace | State::BeginValue => {
+                        handler.handle(&pos, ParsedValue::Value(key_buf, String::new()));
+                        Ok(pos)
+                    }
+                    State::Value => {
+                        handler.handle(&pos, ParsedValue::Value(key_buf, value_buf));
+                        Ok(pos)
+                    }
+                    State::MultiLineTrim(is_value) | State::EscapeCarriageReturn(is_value) => {
+                        if is_value {
+                            handler.handle(&pos, ParsedValue::Value(key_buf, value_buf));
+                        } else {
+                            handler.handle(&pos, ParsedValue::Value(key_buf, String::new()));
+                        }
 
-                    Ok(pos)
+                        Ok(pos)
+                    }
+                    State::Escape(_) => Err(ParserError::UnexpectedEof),
+                    State::Unicode(_) => Err(ParserError::UnexpectedEof),
                 }
-                State::Escape(_) => Err(ParserError::UnexpectedEof),
-                State::Unicode(_) => Err(ParserError::UnexpectedEof),
-            },
+            }
             Err(CharacterInputError::UnexpectedEof) => return Err(ParserError::UnexpectedEof),
             Err(CharacterInputError::InvalidInput) => return Err(ParserError::InvalidInput(pos)),
             Err(CharacterInputError::InputError(e)) => return Err(ParserError::InputError(pos, e)),
@@ -581,31 +585,31 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
                     match next_char {
                         ' ' => {
                             continue 'parse_next;
-                        },
+                        }
                         '#' | '!' => {
                             state = State::Comment;
                             continue;
-                        },
+                        }
                         '\r' => {
                             //Either CRLF (Windows) or CR (Mac)
                             if !handler.handle(&pos, ParsedValue::BlankLine) {
-                                return Ok(pos)
+                                return Ok(pos);
                             }
                             state = State::CarriageReturn;
                             continue 'parse_next;
-                        },
+                        }
                         '\n' => {
                             //LF (Unix)
                             pos.next_line();
                             if !handler.handle(&pos, ParsedValue::BlankLine) {
-                                return Ok(pos)
+                                return Ok(pos);
                             }
                             continue 'parse_next;
-                        },
-                        _=> {
+                        }
+                        _ => {
                             state = State::Key;
                             continue;
-                        },
+                        }
                     }
                 }
                 State::CarriageReturn => {
@@ -617,171 +621,171 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
                             state = State::LineStart;
                             continue 'parse_next;
                         }
-                        _=> {
+                        _ => {
                             //Was CR (Mac)
                             state = State::LineStart;
                             continue;
                         }
                     }
                 }
-                State::Comment => {
-                    match next_char {
-                        '\r' => {
-                            if !handler.handle(&pos, ParsedValue::Comment(mem::replace(&mut key_buf, String::new()))) {
-                                return Ok(pos)
-                            }
-                            state = State::CarriageReturn;
-                            continue 'parse_next;
+                State::Comment => match next_char {
+                    '\r' => {
+                        if !handler.handle(&pos, ParsedValue::Comment(mem::take(&mut key_buf))) {
+                            return Ok(pos);
                         }
-                        '\n' => {
-                            if !handler.handle(&pos, ParsedValue::Comment(mem::replace(&mut key_buf, String::new()))) {
-                                return Ok(pos)
-                            }
-                            pos.next_line();
-                            state = State::LineStart;
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            key_buf.push(next_char);
-                            continue 'parse_next;
-                        }
+                        state = State::CarriageReturn;
+                        continue 'parse_next;
                     }
-                }
-                State::Key => {
-                    match next_char {
-                        '\r' => {
-                            if !handler.handle(&pos, ParsedValue::Value(mem::replace(&mut key_buf, String::new()), String::new())) {
-                                return Ok(pos)
-                            }
-                            state = State::CarriageReturn;
-                            continue 'parse_next;
+                    '\n' => {
+                        if !handler.handle(&pos, ParsedValue::Comment(mem::take(&mut key_buf))) {
+                            return Ok(pos);
                         }
-                        '\n' => {
-                            if !handler.handle(&pos, ParsedValue::Value(mem::replace(&mut key_buf, String::new()), String::new())) {
-                                return Ok(pos)
-                            }
-                            pos.next_line();
-                            state = State::LineStart;
-                            continue 'parse_next;
-                        }
-                        ' ' | '\t' => {
-                            state = State::KeyWhitespace;
-                            continue 'parse_next;
-                        }
-                        '=' | ':' => {
-                            state = State::BeginValue;
-                            continue 'parse_next;
-                        }
-                        '\\' => {
-                            state = State::Escape(false);
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            key_buf.push(next_char);
-                            continue 'parse_next;
-                        }
+                        pos.next_line();
+                        state = State::LineStart;
+                        continue 'parse_next;
                     }
-                }
-                State::Escape(is_value) => {
-                    match next_char {
-                        'u' => {
-                            state = State::Unicode(is_value);
-                            continue 'parse_next;
-                        },
-                        'n' => {
-                            if is_value {
-                                value_buf.push('\n');
-                                state = State::Value
-                            } else {
-                                key_buf.push('\n');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        't' => {
-                            if is_value {
-                                value_buf.push('\t');
-                                state = State::Value
-                            } else {
-                                key_buf.push('\t');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        'r' => {
-                            if is_value {
-                                value_buf.push('\r');
-                                state = State::Value
-                            } else {
-                                key_buf.push('\r');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        'f' => {
-                            if is_value {
-                                value_buf.push('\x0C');
-                                state = State::Value
-                            } else {
-                                key_buf.push('\x0C');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        ' ' => {
-                            if is_value {
-                                value_buf.push(' ');
-                                state = State::Value
-                            } else {
-                                key_buf.push(' ');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        '\\' => {
-                            if is_value {
-                                value_buf.push('\\');
-                                state = State::Value
-                            } else {
-                                key_buf.push('\\');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        '=' => {
-                            if is_value {
-                                value_buf.push('=');
-                                state = State::Value
-                            } else {
-                                key_buf.push('=');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        ':' => {
-                            if is_value {
-                                value_buf.push(':');
-                                state = State::Value
-                            } else {
-                                key_buf.push(':');
-                                state = State::Key;
-                            }
-                            continue 'parse_next;
-                        }
-                        '\r' => {
-                            state = State::EscapeCarriageReturn(is_value);
-                            continue 'parse_next;
-                        }
-                        '\n' => {
-                            pos.next_line();
-                            state = State::MultiLineTrim(is_value);
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            return Err(ParserError::InvalidEscapeCharacter(pos, next_char));
-                        }
+                    _ => {
+                        key_buf.push(next_char);
+                        continue 'parse_next;
                     }
-                }
+                },
+                State::Key => match next_char {
+                    '\r' => {
+                        if !handler.handle(
+                            &pos,
+                            ParsedValue::Value(mem::take(&mut key_buf), String::new()),
+                        ) {
+                            return Ok(pos);
+                        }
+                        state = State::CarriageReturn;
+                        continue 'parse_next;
+                    }
+                    '\n' => {
+                        if !handler.handle(
+                            &pos,
+                            ParsedValue::Value(mem::take(&mut key_buf), String::new()),
+                        ) {
+                            return Ok(pos);
+                        }
+                        pos.next_line();
+                        state = State::LineStart;
+                        continue 'parse_next;
+                    }
+                    ' ' | '\t' => {
+                        state = State::KeyWhitespace;
+                        continue 'parse_next;
+                    }
+                    '=' | ':' => {
+                        state = State::BeginValue;
+                        continue 'parse_next;
+                    }
+                    '\\' => {
+                        state = State::Escape(false);
+                        continue 'parse_next;
+                    }
+                    _ => {
+                        key_buf.push(next_char);
+                        continue 'parse_next;
+                    }
+                },
+                State::Escape(is_value) => match next_char {
+                    'u' => {
+                        state = State::Unicode(is_value);
+                        continue 'parse_next;
+                    }
+                    'n' => {
+                        if is_value {
+                            value_buf.push('\n');
+                            state = State::Value
+                        } else {
+                            key_buf.push('\n');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    't' => {
+                        if is_value {
+                            value_buf.push('\t');
+                            state = State::Value
+                        } else {
+                            key_buf.push('\t');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    'r' => {
+                        if is_value {
+                            value_buf.push('\r');
+                            state = State::Value
+                        } else {
+                            key_buf.push('\r');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    'f' => {
+                        if is_value {
+                            value_buf.push('\x0C');
+                            state = State::Value
+                        } else {
+                            key_buf.push('\x0C');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    ' ' => {
+                        if is_value {
+                            value_buf.push(' ');
+                            state = State::Value
+                        } else {
+                            key_buf.push(' ');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    '\\' => {
+                        if is_value {
+                            value_buf.push('\\');
+                            state = State::Value
+                        } else {
+                            key_buf.push('\\');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    '=' => {
+                        if is_value {
+                            value_buf.push('=');
+                            state = State::Value
+                        } else {
+                            key_buf.push('=');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    ':' => {
+                        if is_value {
+                            value_buf.push(':');
+                            state = State::Value
+                        } else {
+                            key_buf.push(':');
+                            state = State::Key;
+                        }
+                        continue 'parse_next;
+                    }
+                    '\r' => {
+                        state = State::EscapeCarriageReturn(is_value);
+                        continue 'parse_next;
+                    }
+                    '\n' => {
+                        pos.next_line();
+                        state = State::MultiLineTrim(is_value);
+                        continue 'parse_next;
+                    }
+                    _ => {
+                        return Err(ParserError::InvalidEscapeCharacter(pos, next_char));
+                    }
+                },
                 State::EscapeCarriageReturn(is_value) => {
                     state = State::MultiLineTrim(is_value);
                     if next_char == '\n' {
@@ -789,21 +793,19 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
                     }
                     continue;
                 }
-                State::MultiLineTrim(is_value) => {
-                    match next_char {
-                        ' ' | '\t' | '\x0c' => {
-                            continue 'parse_next;
-                        }
-                        _ => {
-                            if is_value {
-                                state = State::Value;
-                            } else {
-                                state = State::Key;
-                            }
-                            continue;
-                        }
+                State::MultiLineTrim(is_value) => match next_char {
+                    ' ' | '\t' | '\x0c' => {
+                        continue 'parse_next;
                     }
-                }
+                    _ => {
+                        if is_value {
+                            state = State::Value;
+                        } else {
+                            state = State::Key;
+                        }
+                        continue;
+                    }
+                },
 
                 State::Unicode(is_value) => {
                     if next_char.is_ascii_hexdigit() {
@@ -813,6 +815,8 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
                                 //This can't really fail, 4 hex characters will always fit into u32 if is_ascii_hexdigit is true.
                                 .expect("State::KeyUnicode from_str_radix");
                             unicode_buf.clear();
+
+                            use core::convert::TryFrom;
 
                             if let Ok(char_code) = char::try_from(unicode) {
                                 if is_value {
@@ -831,65 +835,64 @@ pub fn parse<T: CharacterInput<E>, E>(input: &mut T, handler: &mut impl Property
                     }
                     return Err(ParserError::InvalidUnicodeEscapeCharacter(pos, next_char));
                 }
-                State::KeyWhitespace => {
-                    match next_char {
-                        ' ' | '\t' | '\x0C' => {
-                            continue 'parse_next;
-                        }
-                        ':' | '=' => {
-                            state = State::BeginValue;
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            state = State::BeginValue;
-                            continue;
-                        }
+                State::KeyWhitespace => match next_char {
+                    ' ' | '\t' | '\x0C' => {
+                        continue 'parse_next;
                     }
-                }
-                State::BeginValue => {
-                    match next_char {
-                        ' ' | '\t' | '\x0C' => {
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            state = State::Value;
-                            continue;
-                        }
+                    ':' | '=' => {
+                        state = State::BeginValue;
+                        continue 'parse_next;
                     }
-                }
-                State::Value => {
-                    match next_char {
-                        '\\' => {
-                            state = State::Escape(true);
-                            continue 'parse_next;
+                    _ => {
+                        state = State::BeginValue;
+                        continue;
+                    }
+                },
+                State::BeginValue => match next_char {
+                    ' ' | '\t' | '\x0C' => {
+                        continue 'parse_next;
+                    }
+                    _ => {
+                        state = State::Value;
+                        continue;
+                    }
+                },
+                State::Value => match next_char {
+                    '\\' => {
+                        state = State::Escape(true);
+                        continue 'parse_next;
+                    }
+                    '\r' => {
+                        if !handler.handle(
+                            &pos,
+                            ParsedValue::Value(mem::take(&mut key_buf), mem::take(&mut value_buf)),
+                        ) {
+                            return Ok(pos);
                         }
-                        '\r' => {
-                            if !handler.handle(&pos, ParsedValue::Value(mem::replace(&mut key_buf, String::new()), mem::replace(&mut value_buf, String::new()))) {
-                                return Ok(pos)
-                            }
-                            state = State::CarriageReturn;
-                            continue 'parse_next;
+                        state = State::CarriageReturn;
+                        continue 'parse_next;
+                    }
+                    '\n' => {
+                        if !handler.handle(
+                            &pos,
+                            ParsedValue::Value(mem::take(&mut key_buf), mem::take(&mut value_buf)),
+                        ) {
+                            return Ok(pos);
                         }
-                        '\n' => {
-                            if !handler.handle(&pos, ParsedValue::Value(mem::replace(&mut key_buf, String::new()), mem::replace(&mut value_buf, String::new()))) {
-                                return Ok(pos)
-                            }
-                            pos.next_line();
-                            state = State::LineStart;
-                            continue 'parse_next;
-                        }
-                        _=> {
-                            value_buf.push(next_char);
-                            continue 'parse_next;
-                        }
+                        pos.next_line();
+                        state = State::LineStart;
+                        continue 'parse_next;
+                    }
+                    _ => {
+                        value_buf.push(next_char);
+                        continue 'parse_next;
                     }
                 },
             }
 
-            //Save me clippy!
-            #[expect(unreachable_code)]
+            #[allow(unreachable_code)]
+            //#[expect(unreachable_code)]
             {
-                let _ = ();
                 unreachable!();
             }
         }

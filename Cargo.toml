@@ -1,13 +1,18 @@
 [package]
 name = "jprop"
 version = "0.1.0"
-edition = "2024"
+edition = "2018"
+license = "MIT"
+authors = ["Alexander Schütz <aschuetz@protonmail.com>"]
+keywords = ["properties", "java", "dotproperties", "dot-properties", "no-std"]
+categories = ["parsing", "no-std"]
+description = "no-std parser for java .properties files that actually works"
+readme = "README.md"
+repository = "https://github.com/AlexanderSchuetz97/jpop"
+rust-version = "1.40.0"
 
 [features]
 default = ["std"]
 std = []
 
 [dependencies]
-
-[dev-dependencies]
-jni-simple = { version = "0.3.0", features = ["loadjvm"] }
