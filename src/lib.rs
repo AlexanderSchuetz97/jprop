@@ -1,4 +1,23 @@
+//! # jprop
+//! no-std parser for java `.properties` files that actually works
 #![no_std]
+#![deny(
+    clippy::correctness,
+    clippy::perf,
+    clippy::complexity,
+    clippy::style,
+    clippy::nursery,
+    clippy::pedantic,
+    clippy::clone_on_ref_ptr,
+    clippy::decimal_literal_representation,
+    clippy::float_cmp_const,
+    clippy::missing_docs_in_private_items,
+    clippy::multiple_inherent_impl,
+    clippy::unwrap_used,
+    clippy::cargo_common_metadata,
+    clippy::used_underscore_binding
+)]
+
 extern crate alloc;
 
 use alloc::string::String;
@@ -7,7 +26,9 @@ use core::fmt::{Display, Formatter};
 use core::marker::PhantomData;
 use core::mem;
 use core::str::Chars;
+use std::convert::TryFrom;
 
+/// Error enum for Parsing characters
 #[derive(Debug, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Hash)]
 pub enum CharacterInputError<E> {
     UnexpectedEof,
@@ -22,11 +43,16 @@ pub trait CharacterInput<E> {
     /// 1. Ok(None) to signal EOF.
     /// 2. Ok(Some) to give the next to the parser.
     /// 3. Err is passed as is to the caller.
+    /// # Errors
+    /// Presumably IO Errors
     ///
     fn next_character(&mut self) -> Result<Option<char>, CharacterInputError<E>>;
 }
 
 pub trait ByteInput<E> {
+    /// Read the next byte from the stream or return None on eof.
+    /// # Errors
+    /// Presumably IO Errors.
     fn next_byte(&mut self) -> Result<Option<u8>, E>;
 }
 
@@ -34,9 +60,10 @@ pub trait PropertyHandler {
     fn handle(&mut self, position: &ParserPosition, value: ParsedValue) -> bool;
 }
 
-//https://en.wikipedia.org/wiki/ISO/IEC_8859-1
-//0 char is used as a substitute for undefined.
-static ISO_8859_1: &[char] = &[
+/// The ISO-8859-1 codepage, byte to char.
+/// `<https://en.wikipedia.org/wiki/ISO/IEC_8859-1>`
+/// 0 char is used as a substitute for undefined.
+static ISO_8859_1: [char; 256] = [
     //0x00-0x0F
     '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
     //0x10-0x1F
@@ -71,6 +98,7 @@ static ISO_8859_1: &[char] = &[
     'ð', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', '÷', 'ø', 'ù', 'ú', 'û', 'ü', 'ý', 'þ', 'ÿ',
 ];
 
+/// UTF8 character input.
 struct UTF8<'a, T: ByteInput<E>, E>(&'a mut T, bool, bool, PhantomData<E>);
 impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
     fn next_character(&mut self) -> Result<Option<char>, CharacterInputError<E>> {
@@ -147,6 +175,8 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for UTF8<'_, T, E> {
             .ok_or_else(|| CharacterInputError::InvalidInput)
     }
 }
+
+/// ISO-8859-1 character input.
 struct ISO88591<'a, T: ByteInput<E>, E>(&'a mut T, PhantomData<E>);
 
 impl<T: ByteInput<E>, E> CharacterInput<E> for ISO88591<'_, T, E> {
@@ -169,18 +199,31 @@ impl<T: ByteInput<E>, E> CharacterInput<E> for ISO88591<'_, T, E> {
     }
 }
 
+/// Parser state machine states.
 #[derive(Debug, Eq, PartialEq)]
 enum State {
+    /// Start of a line, no non-whitespace read yet.
     LineStart,
+    /// We have just read \r.
     CarriageReturn,
+    /// We are in the process of parsing a comment line. Meaning this line has no non whitespace before the first # or !
     Comment,
+    /// We are parsing the key, as in the actual key characters.
     Key,
+    /// We have parsed the keys and are now parsing whitespaces after the key. We are looking for the '=' more or less.
     KeyWhitespace,
+    /// We have got the = after the key, so now we are ignoring all whitespaces until the value starts.
     BeginValue,
+    /// We are parsing the value.
     Value,
+    /// We are parsing an escape sequence in false=key, true=value.
     Escape(bool),
+    /// We are currently ignoring whitespaces until we find a non whitespace while parsing a multi line false=key, true=value
     MultiLineTrim(bool),
+    /// We have parsed an escaped \r (like \ followed by the actual CR, not the r character) and are now checking for the \n.
+    /// false=key, true=value
     EscapeCarriageReturn(bool),
+    /// We are parsing a Unicode escape sequence in either false=key, true=value.
     Unicode(bool),
 }
 
@@ -209,11 +252,13 @@ impl Display for ParserPosition {
 
 //Doesnt need to be public.
 impl ParserPosition {
+    /// Called after a new-line has been processed.
     fn next_line(&mut self) {
         self.line += 1;
         self.character_in_line = 0;
     }
 
+    /// Called after a char has been read.
     fn next_char(&mut self) {
         self.character_in_line += 1;
         self.character_total += 1;
@@ -226,7 +271,7 @@ pub enum ParserError<E> {
     /// For example, a Unicode escape sequence...
     UnexpectedEof,
 
-    /// The CharacterInput decoded an invalid character, which is not a valid Unicode literal, or some other decoding error occurred.
+    /// The `CharacterInput` decoded an invalid character, which is not a valid Unicode literal, or some other decoding error occurred.
     /// This is not an io error but indicates invalid data/corruption.
     InvalidInput(ParserPosition),
 
@@ -243,34 +288,34 @@ pub enum ParserError<E> {
 impl<E: Display> Display for ParserError<E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            ParserError::UnexpectedEof => f.write_str("UnexpectedEof"),
-            ParserError::InvalidInput(pos) => {
+            Self::UnexpectedEof => f.write_str("UnexpectedEof"),
+            Self::InvalidInput(pos) => {
                 f.write_str("InvalidInput(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(")")
             }
-            ParserError::InputError(pos, e) => {
+            Self::InputError(pos, e) => {
                 f.write_str("InputError(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(", ")?;
                 Display::fmt(e, f)?;
                 f.write_str(")")
             }
-            ParserError::InvalidEscapeCharacter(pos, e) => {
+            Self::InvalidEscapeCharacter(pos, e) => {
                 f.write_str("InvalidEscapeCharacter(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(", ")?;
                 Display::fmt(e, f)?;
                 f.write_str(")")
             }
-            ParserError::InvalidUnicodeEscapeCharacter(pos, e) => {
+            Self::InvalidUnicodeEscapeCharacter(pos, e) => {
                 f.write_str("InvalidUnicodeEscapeCharacter(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(", ")?;
                 Display::fmt(e, f)?;
                 f.write_str(")")
             }
-            ParserError::InvalidUnicodeValue(pos, e) => {
+            Self::InvalidUnicodeValue(pos, e) => {
                 f.write_str("InvalidUnicodeEscapeCharacter(")?;
                 Display::fmt(pos, f)?;
                 f.write_str(", ")?;
@@ -287,6 +332,8 @@ impl CharacterInput<()> for Chars<'_> {
     }
 }
 
+/// Input for a slice, tracks read position.
+/// basically low budget `std::io::Cursor`
 struct SliceInput<'a>(&'a [u8], usize);
 
 impl ByteInput<()> for SliceInput<'_> {
@@ -307,6 +354,7 @@ impl<T: Fn(&ParserPosition, ParsedValue) -> bool> PropertyHandler for T {
     }
 }
 
+/// Property Handler for parsing Vec<ParsedValue>.
 #[derive(Default, Debug)]
 struct DocHandler(Vec<ParsedValue>);
 
@@ -317,6 +365,7 @@ impl PropertyHandler for DocHandler {
     }
 }
 
+/// Property Handler for parsing `HashMap<String, String>` key value pairs.
 #[cfg(feature = "std")]
 #[derive(Default, Debug)]
 struct MapHandler(std::collections::HashMap<String, String>);
@@ -331,6 +380,7 @@ impl PropertyHandler for MapHandler {
     }
 }
 
+/// Property Handler for parsing Vec<String, String> key value pairs.
 #[derive(Default, Debug)]
 struct VecHandler(Vec<(String, String)>);
 
@@ -358,6 +408,12 @@ impl<T: std::io::Read> ByteInput<std::io::Error> for T {
     }
 }
 
+/// Read bytes from a source and treat them as a ISO-8859-1 String and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_iso_8859_1_to_doc<E>(
     source: &mut impl ByteInput<E>,
 ) -> Result<Vec<ParsedValue>, ParserError<E>> {
@@ -366,6 +422,12 @@ pub fn parse_iso_8859_1_to_doc<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as a ISO-8859-1 String and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_iso_8859_1_to_vec<E>(
     source: &mut impl ByteInput<E>,
 ) -> Result<Vec<(String, String)>, ParserError<E>> {
@@ -374,6 +436,12 @@ pub fn parse_iso_8859_1_to_vec<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as a ISO-8859-1 String and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 #[cfg(feature = "std")]
 pub fn parse_iso_8859_1_to_map<E>(
     source: &mut impl ByteInput<E>,
@@ -383,14 +451,26 @@ pub fn parse_iso_8859_1_to_map<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as UTF-8 and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_iso_8859_18<E>(
     source: &mut impl ByteInput<E>,
     handler: &mut impl PropertyHandler,
 ) -> Result<ParserPosition, ParserError<E>> {
-    let mut n = ISO88591(source, Default::default());
+    let mut n = ISO88591(source, PhantomData);
     parse(&mut n, handler)
 }
 
+/// Read bytes from a source and treat them as UTF-8 and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_utf8_to_doc<E>(
     source: &mut impl ByteInput<E>,
 ) -> Result<Vec<ParsedValue>, ParserError<E>> {
@@ -399,6 +479,12 @@ pub fn parse_utf8_to_doc<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as UTF-8 and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_utf8_to_vec<E>(
     source: &mut impl ByteInput<E>,
 ) -> Result<Vec<(String, String)>, ParserError<E>> {
@@ -407,6 +493,12 @@ pub fn parse_utf8_to_vec<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as UTF-8 and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 #[cfg(feature = "std")]
 pub fn parse_utf8_to_map<E>(
     source: &mut impl ByteInput<E>,
@@ -416,14 +508,25 @@ pub fn parse_utf8_to_map<E>(
     Ok(result.0)
 }
 
+/// Read bytes from a source and treat them as UTF-8 and then parse them as a properties file.
+///
+/// # Errors
+/// * if the input source errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_utf8<E>(
     source: &mut impl ByteInput<E>,
     handler: &mut impl PropertyHandler,
 ) -> Result<ParserPosition, ParserError<E>> {
-    let mut n = UTF8(source, false, false, Default::default());
+    let mut n = UTF8(source, false, false, PhantomData);
     parse(&mut n, handler)
 }
 
+/// Treat the bytes as a ISO-8859-1 string and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_iso_8859_1_to_doc(
     bytes: impl AsRef<[u8]>,
 ) -> Result<Vec<ParsedValue>, ParserError<()>> {
@@ -432,6 +535,11 @@ pub fn parse_bytes_iso_8859_1_to_doc(
     Ok(result.0)
 }
 
+/// Treat the bytes as a ISO-8859-1 string and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_iso_8859_1_to_vec(
     bytes: impl AsRef<[u8]>,
 ) -> Result<Vec<(String, String)>, ParserError<()>> {
@@ -440,6 +548,11 @@ pub fn parse_bytes_iso_8859_1_to_vec(
     Ok(result.0)
 }
 
+/// Treat the bytes as a ISO-8859-1 string and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 #[cfg(feature = "std")]
 pub fn parse_bytes_iso_8859_1_to_map(
     bytes: impl AsRef<[u8]>,
@@ -449,16 +562,26 @@ pub fn parse_bytes_iso_8859_1_to_map(
     Ok(result.0)
 }
 
+/// Treat the bytes as a ISO-8859-1 string and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_iso_8859_1(
     bytes: impl AsRef<[u8]>,
     handler: &mut impl PropertyHandler,
 ) -> Result<ParserPosition, ParserError<()>> {
     let n = bytes.as_ref();
     let mut sl = SliceInput(n, 0);
-    let mut iso = ISO88591(&mut sl, Default::default());
+    let mut iso = ISO88591(&mut sl, PhantomData);
     parse(&mut iso, handler)
 }
 
+/// Treat the bytes as utf-8 and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_utf8_to_doc(
     bytes: impl AsRef<[u8]>,
 ) -> Result<Vec<ParsedValue>, ParserError<()>> {
@@ -467,6 +590,11 @@ pub fn parse_bytes_utf8_to_doc(
     Ok(result.0)
 }
 
+/// Treat the bytes as utf-8 and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_utf8_to_vec(
     bytes: impl AsRef<[u8]>,
 ) -> Result<Vec<(String, String)>, ParserError<()>> {
@@ -475,6 +603,11 @@ pub fn parse_bytes_utf8_to_vec(
     Ok(result.0)
 }
 
+/// Treat the bytes as utf-8 and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 #[cfg(feature = "std")]
 pub fn parse_bytes_utf8_to_map(
     bytes: impl AsRef<[u8]>,
@@ -484,28 +617,48 @@ pub fn parse_bytes_utf8_to_map(
     Ok(result.0)
 }
 
+/// Treat the bytes as utf-8 and parse them as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_bytes_utf8(
     bytes: impl AsRef<[u8]>,
     handler: &mut impl PropertyHandler,
 ) -> Result<ParserPosition, ParserError<()>> {
     let n = bytes.as_ref();
     let mut sli = SliceInput(n, 0);
-    let mut utf = UTF8(&mut sli, false, false, Default::default());
+    let mut utf = UTF8(&mut sli, false, false, PhantomData);
     parse(&mut utf, handler)
 }
 
+/// Parse the str as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_str_to_doc(str: impl AsRef<str>) -> Result<Vec<ParsedValue>, ParserError<()>> {
     let mut result = DocHandler::default();
     parse_str(str, &mut result)?;
     Ok(result.0)
 }
 
+/// Parse the str as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_str_to_vec(str: impl AsRef<str>) -> Result<Vec<(String, String)>, ParserError<()>> {
     let mut result = VecHandler::default();
     parse_str(str, &mut result)?;
     Ok(result.0)
 }
 
+/// Parse the str as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 #[cfg(feature = "std")]
 pub fn parse_str_to_map(
     str: impl AsRef<str>,
@@ -515,6 +668,11 @@ pub fn parse_str_to_map(
     Ok(result.0)
 }
 
+/// Parse the str as a properties file.
+///
+/// # Errors
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
 pub fn parse_str(
     str: impl AsRef<str>,
     handler: &mut impl PropertyHandler,
@@ -527,6 +685,13 @@ pub fn parse_str(
 /// Low-level parsing function.
 /// There should be no need to use this function directly unless you need to, for example, parse
 /// in a custom encoding that the JVM itself cannot even read.
+///
+/// # Errors
+/// * if the character input errors.
+/// * if an illegal sequence of characters is parsed.
+///   * for example non-Hex characters in a Unicode escape sequence
+/// # Panics
+#[allow(clippy::too_many_lines)] //TODO later
 pub fn parse<T: CharacterInput<E>, E>(
     input: &mut T,
     handler: &mut impl PropertyHandler,
@@ -567,8 +732,7 @@ pub fn parse<T: CharacterInput<E>, E>(
 
                         Ok(pos)
                     }
-                    State::Escape(_) => Err(ParserError::UnexpectedEof),
-                    State::Unicode(_) => Err(ParserError::UnexpectedEof),
+                    State::Escape(_) | State::Unicode(_) => Err(ParserError::UnexpectedEof),
                 }
             }
             Err(CharacterInputError::UnexpectedEof) => return Err(ParserError::UnexpectedEof),
@@ -614,19 +778,15 @@ pub fn parse<T: CharacterInput<E>, E>(
                 }
                 State::CarriageReturn => {
                     pos.next_line();
+                    state = State::LineStart;
 
-                    match next_char {
-                        '\n' => {
-                            //Was CRLF (Windows)
-                            state = State::LineStart;
-                            continue 'parse_next;
-                        }
-                        _ => {
-                            //Was CR (Mac)
-                            state = State::LineStart;
-                            continue;
-                        }
+                    if next_char == '\n' {
+                        //Was CRLF (Windows)
+                        continue 'parse_next;
                     }
+
+                    //Was CR (Mac)
+                    continue;
                 }
                 State::Comment => match next_char {
                     '\r' => {
@@ -696,7 +856,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     'n' => {
                         if is_value {
                             value_buf.push('\n');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('\n');
                             state = State::Key;
@@ -706,7 +866,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     't' => {
                         if is_value {
                             value_buf.push('\t');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('\t');
                             state = State::Key;
@@ -716,7 +876,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     'r' => {
                         if is_value {
                             value_buf.push('\r');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('\r');
                             state = State::Key;
@@ -726,7 +886,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     'f' => {
                         if is_value {
                             value_buf.push('\x0C');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('\x0C');
                             state = State::Key;
@@ -736,7 +896,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     ' ' => {
                         if is_value {
                             value_buf.push(' ');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push(' ');
                             state = State::Key;
@@ -746,7 +906,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     '\\' => {
                         if is_value {
                             value_buf.push('\\');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('\\');
                             state = State::Key;
@@ -756,7 +916,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     '=' => {
                         if is_value {
                             value_buf.push('=');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push('=');
                             state = State::Key;
@@ -766,7 +926,7 @@ pub fn parse<T: CharacterInput<E>, E>(
                     ':' => {
                         if is_value {
                             value_buf.push(':');
-                            state = State::Value
+                            state = State::Value;
                         } else {
                             key_buf.push(':');
                             state = State::Key;
@@ -812,11 +972,10 @@ pub fn parse<T: CharacterInput<E>, E>(
                         unicode_buf.push(next_char);
                         if unicode_buf.len() == 4 {
                             let unicode = u32::from_str_radix(&unicode_buf, 16)
-                                //This can't really fail, 4 hex characters will always fit into u32 if is_ascii_hexdigit is true.
-                                .expect("State::KeyUnicode from_str_radix");
+                                // This can't fall back to default really,
+                                // 4 hex characters will always fit into u32 if is_ascii_hexdigit is true.
+                                .unwrap_or_default();
                             unicode_buf.clear();
-
-                            use core::convert::TryFrom;
 
                             if let Ok(char_code) = char::try_from(unicode) {
                                 if is_value {
@@ -896,5 +1055,80 @@ pub fn parse<T: CharacterInput<E>, E>(
                 unreachable!();
             }
         }
+    }
+
+    pub trait CharacterOutput<E> {
+        fn write(&mut self, data: char) -> Result<(), E>;
+
+        /// Determines if a character needs to be Unicode escaped.
+        /// This function will NOT be called for every instance of the following characters:
+        /// - #
+        /// - =
+        /// - !
+        /// - \
+        /// - u
+        /// - 0-9 A-F
+        /// - \n
+        /// - \r
+        /// - ' ' ordinary whitespace
+        ///
+        /// In addition to that it also will not be called for every character in the `line_ending`.
+        fn can_write(&mut self, data: char) -> bool;
+    }
+
+    pub trait ValueSource {
+        fn next(&mut self) -> Option<ParsedValue>;
+    }
+
+    pub fn write<E>(source: &mut impl ValueSource, target: &mut impl CharacterOutput<E>, line_ending: &str) -> Result<(), E> {
+        while let Some(value) = source.next() {
+            match value {
+                ParsedValue::BlankLine => {}
+                ParsedValue::Comment(comment) => {
+                    if !comment.starts_with("#") || !comment.starts_with("!") {
+                        target.write('#')?;
+                    }
+
+                    for c in comment.chars() {
+                        if target.can_write(c) {
+                            target.write(c)?;
+                            continue;
+                        }
+
+                        //I am aware that this is for a comment and the deserializer will not unmangle it.
+                        //However, I prefer this over emitting a fallback char such as ?
+                        target.write('\\')?;
+                        target.write('u')?;
+                        for c in alloc::format!("{:04x}", u32::from(c)).chars() {
+                            target.write(c)?;
+                        }
+                    }
+
+                    for c in line_ending.chars() {
+                        target.write(c)?;
+                    }
+                }
+                ParsedValue::Value(key, value) => {
+                    let mut iter = key.chars();
+                    iter.next();
+
+                    for c in iter {
+                        match c {
+                            '=' => {
+                                target.write('\\')?;
+                                target.write('=')?;
+                            }
+                            ' ' => {
+                                target.write('\\')?;
+                                target.write(' ')?;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        todo!()
     }
 }
