@@ -1,0 +1,13 @@
+[package]
+name = "jprop"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+
+[dev-dependencies]
+jni-simple = { version = "0.3.0", features = ["loadjvm"] }
