@@ -1,6 +1,6 @@
 [package]
 name = "jprop"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 license = "MIT"
 authors = ["Alexander Schütz <aschuetz@protonmail.com>"]
@@ -9,7 +9,7 @@ categories = ["parsing", "no-std"]
 description = "no-std parser for java .properties files that actually works"
 readme = "README.md"
 repository = "https://github.com/AlexanderSchuetz97/jprop"
-rust-version = "1.40.0"
+rust-version = "1.52.1"
 
 [features]
 default = ["std"]

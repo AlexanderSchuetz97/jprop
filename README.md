@@ -60,19 +60,19 @@ pub fn read_test_properties() {
 
 Parse the entire document as a stream.
 ```rust
-use jprop::{ParsedValue, ParserPosition};
+use jprop::{Element, ParserPosition};
 use std::fs::File;
 
 //Your handler would probably have some fields and be more complex.
 struct Handler;
 
 impl jprop::PropertyHandler for Handler {
-  fn handle(&mut self, position: &ParserPosition, value: ParsedValue) -> bool {
+  fn handle(&mut self, position: &ParserPosition, value: Element) -> bool {
     println!("Position {}:{}", position.line+1, position.character_in_line+1);
     match value {
-      ParsedValue::BlankLine => println!(),
-      ParsedValue::Comment(text) => println!("{}", text),
-      ParsedValue::Value(key, value) => println!("{} = {}", key, value),
+      Element::BlankLine => println!(),
+      Element::Comment(text) => println!("{}", text),
+      Element::Value(key, value) => println!("{} = {}", key, value),
     }
     true
   }

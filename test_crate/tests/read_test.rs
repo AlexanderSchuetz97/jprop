@@ -1,8 +1,5 @@
-use jni_simple::{JNI_CreateJavaVM_with_string_args, JNI_VERSION_1_8, JNIEnv};
-use jprop::{
-    ParsedValue, ParserPosition, PropertyHandler, parse_bytes_utf8_to_map, parse_utf8,
-    parse_utf8_to_map,
-};
+use jni_simple::{JNIEnv, JNI_CreateJavaVM_with_string_args, JNI_VERSION_1_8};
+use jprop::{parse_bytes_iso_8859_1_to_map, parse_bytes_utf8_to_map, parse_iso_8859_1, parse_iso_8859_1_to_map, parse_utf8, parse_utf8_to_map, Element, ParserPosition, PropertyHandler};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -37,7 +34,7 @@ fn get_jvm() -> JNIEnv {
     }
 }
 
-fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
+fn jvm_prop_to_rust_map(path: &str, charset: &str) -> HashMap<String, String> {
     unsafe {
         let jvm = get_jvm();
         let system_class = jvm.FindClass("java/lang/System");
@@ -93,7 +90,7 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
         );
         assert!(!isr_constr.is_null());
 
-        let utf8_str = jvm.NewStringUTF("UTF-8");
+        let utf8_str = jvm.NewStringUTF(charset);
 
         let isr = jvm.NewObject2(isr_class, isr_constr, fais, utf8_str);
         assert!(!isr.is_null());
@@ -117,10 +114,12 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
             assert!(!element_value.is_null());
             //jvm.CallObjectMethod1(out, println, element_value);
             let key = jvm
-                .GetStringUTFChars_as_string(element_key)
+                .GetStringChars_as_string(element_key)
                 .expect("Failed to turn jstring into rust String");
+
+
             let value = jvm
-                .GetStringUTFChars_as_string(element_value)
+                .GetStringChars_as_string(element_value)
                 .expect("Failed to turn jstring into rust String");
             result.insert(key, value);
         }
@@ -133,18 +132,18 @@ fn jvm_prop_to_rust_map(path: &str) -> HashMap<String, String> {
 struct Handler(HashMap<String, String>);
 
 impl PropertyHandler for Handler {
-    fn handle(&mut self, _position: &ParserPosition, value: ParsedValue) -> bool {
-        if let ParsedValue::Value(key, value) = value {
+    fn handle(&mut self, _position: &ParserPosition, value: Element) -> bool {
+        if let Element::Value(key, value) = value {
             self.0.insert(key, value);
         }
         true
     }
 }
 
-pub fn do_test(path: &str) {
+pub fn do_test_utf8(path: &str) {
     let mut file = File::open(path).unwrap();
+    let java_map = jvm_prop_to_rust_map(path, "UTF-8");
     let data = parse_utf8_to_map(&mut file).expect("Failed to parse file");
-    let java_map = jvm_prop_to_rust_map(path);
 
     for (key, val) in data.iter() {
         assert_eq!(java_map.get(key), Some(val), "{}={}", key, val);
@@ -164,71 +163,114 @@ pub fn do_test(path: &str) {
     assert_eq!(data2, data);
 }
 
+pub fn do_test_iso(path: &str) {
+    let mut file = File::open(path).unwrap();
+    let java_map = jvm_prop_to_rust_map(path, "ISO-8859-1");
+    let data = parse_iso_8859_1_to_map(&mut file).expect("Failed to parse file");
+
+    for (key, val) in data.iter() {
+        assert_eq!(java_map.get(key), Some(val), "{}={}", key, val);
+    }
+    assert_eq!(java_map.len(), data.len());
+
+    let mut file = File::open(path).unwrap();
+    let mut handler = Handler::default();
+    parse_iso_8859_1(&mut file, &mut handler).expect("Failed to parse file");
+    assert_eq!(handler.0, data);
+
+    let mut file = File::open(path).unwrap();
+    let mut binary = Vec::new();
+    file.read_to_end(&mut binary).expect("Failed to read file");
+
+    let data2 = parse_bytes_iso_8859_1_to_map(&binary).expect("Failed to parse file");
+    assert_eq!(data2, data);
+}
+
 #[test]
 pub fn test() {
-    do_test("./tests/test.properties");
+    do_test_utf8("./tests/test.properties");
 }
 
 #[test]
 pub fn t1() {
-    do_test("./tests/t1.properties");
+    do_test_utf8("./tests/t1.properties");
+    do_test_iso("./tests/t1.properties");
 }
 
 #[test]
 pub fn t2() {
-    do_test("./tests/t2.properties");
+    do_test_utf8("./tests/t2.properties");
+    do_test_iso("./tests/t2.properties");
 }
 
 #[test]
 pub fn t3() {
-    do_test("./tests/t3.properties");
+    do_test_utf8("./tests/t3.properties");
+    do_test_iso("./tests/t3.properties");
 }
 
 #[test]
 pub fn t4() {
-    do_test("./tests/t4.properties");
+    do_test_utf8("./tests/t4.properties");
+    do_test_iso("./tests/t4.properties");
 }
 
 #[test]
 pub fn t5() {
-    do_test("./tests/t5.properties");
+    do_test_utf8("./tests/t5.properties");
+    do_test_iso("./tests/t5.properties");
 }
 
 #[test]
 pub fn t6() {
-    do_test("./tests/t6.properties");
+    do_test_utf8("./tests/t6.properties");
+    do_test_iso("./tests/t6.properties");
 }
 
 #[test]
 pub fn t7() {
-    do_test("./tests/t7.properties");
+    do_test_utf8("./tests/t7.properties");
+    do_test_iso("./tests/t7.properties");
 }
 #[test]
 pub fn t8() {
-    do_test("./tests/t8.properties");
+    do_test_utf8("./tests/t8.properties");
+    do_test_iso("./tests/t8.properties");
 }
 
 #[test]
 pub fn t9() {
-    do_test("./tests/t9.bin");
+    do_test_utf8("./tests/t9.bin");
 }
 
 #[test]
 pub fn t10() {
-    do_test("./tests/t10.bin");
+    do_test_utf8("./tests/t10.bin");
 }
 
 #[test]
 pub fn t11() {
-    do_test("./tests/t11.bin");
+    do_test_utf8("./tests/t11.bin");
 }
 
 #[test]
 pub fn t12() {
-    do_test("./tests/t12.bin");
+    do_test_utf8("./tests/t12.bin");
 }
 
 #[test]
 pub fn t13() {
-    do_test("./tests/t13.bin");
+    do_test_utf8("./tests/t13.bin");
+}
+
+#[test]
+pub fn t14() {
+    do_test_utf8("./tests/t14.properties");
+    do_test_iso("./tests/t14.properties");
+}
+
+#[test]
+pub fn t15() {
+    do_test_utf8("./tests/t15.properties");
+    do_test_iso("./tests/t15.properties");
 }
