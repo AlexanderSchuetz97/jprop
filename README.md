@@ -97,3 +97,12 @@ pub fn read_properties_from_string() {
     //profit?
 }
 ```
+## Running tests
+This crate has some tests that compare the parsed result against the JVM's parser
+using JNI. This means to run the tests you need to have java installed.
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+cargo test
+```
+The tests should work with java 8 or newer.
+Otherwise, a look at the GitHub ci script may also prove helpful.
