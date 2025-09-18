@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - name: Run test
-        run: cargo test
+        run: cd test_crate && cargo test
 
   macos-jdk-21:
     runs-on: macos-latest
@@ -30,7 +30,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - name: Run test
-        run: cargo test
+        run: cd test_crate && cargo test
 
   windows-jdk-21:
     runs-on: windows-latest
@@ -41,4 +41,4 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
       - name: Run test
-        run: cargo test
+        run: cd test_crate && cargo test
