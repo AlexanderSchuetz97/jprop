@@ -100,7 +100,8 @@ pub fn read_properties_from_string() {
 ## Running tests
 This crate has some tests that compare the parsed result against the JVM's parser
 using JNI. This means to run the tests you need to have java installed.
-```bash
+```bashhttps://github.com/AlexanderSchuetz97/jprop/issues/3
+cd test_crate
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 cargo test
 ```
